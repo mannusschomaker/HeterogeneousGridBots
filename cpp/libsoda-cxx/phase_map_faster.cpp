@@ -192,9 +192,9 @@ vector<double> y_init = get_y0(nodes);
 double actuation_length(double time) 
 {
     (void)ac; (void)omega; (void)delta_l; 
-    if (time/10 < 0.5)
-        return -0.01;
-    return -0.01 + (time/10 - 0.5) * 0.04;// + sin(time)/1000.0; 
+    if (time < 5.0) return -0.01; 
+    return 0.01; 
+    //return 0.01 * sin(time/5.0);// + sin(time)/1000.0; 
     /*double t = fmod(time,t_cycle) - t_motion/4; 
     if (t < ac[3]/4)
         return ac[0] * (sin(omega * t) + 1) * delta_l;
