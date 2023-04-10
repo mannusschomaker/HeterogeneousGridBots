@@ -191,8 +191,10 @@ vector<double> y_init = get_y0(nodes);
 // integration-related functions
 double actuation_length(double time) 
 {
-    (void)ac; (void)omega; (void)delta_l; (void)time;
-    return -0.01;//sqrt(2) * cube_length  + sin(time) * 0.001;// + sin(time)/1000.0; 
+    (void)ac; (void)omega; (void)delta_l; 
+    if (time/10 < 0.5)
+        return -0.01;
+    return -0.01 + (time/10 - 0.5) * 0.04;// + sin(time)/1000.0; 
     /*double t = fmod(time,t_cycle) - t_motion/4; 
     if (t < ac[3]/4)
         return ac[0] * (sin(omega * t) + 1) * delta_l;
@@ -217,7 +219,7 @@ void yprime(double t, double* y, double* ydot, void* phi)
     (void)phi; 
     vector<double> acc(nodes.size() * 2, 0.0);  // force (acceleration in last loop) imparted on each node (component-wise)   
     vector<double> l0(rest_lengths);
-    for (int i = 0; i < (int)actuators.size(); i++) {  // actuate
+    for (int i = 0; i < (int)actuators.size(); i++) {  // actuate (new l0 = rest len + time-dependent)
         l0[actuators[i]] += actuation_length(t - ((double*)phi)[div(i,2).quot]);
     }
     int ix1, iy1, ix2, iy2;  // flattened-out indices of the components of start/end node of a spring
@@ -237,16 +239,16 @@ void yprime(double t, double* y, double* ydot, void* phi)
     }
     //cout << endl;
     
-    /*for (int i = 0; i < (int)nodes.size(); i++) {  // friction
-        ix1 = 2*nodes.size() + 2*i; iy1 = ix1 + 1; 
+    for (int i = 0; i < (int)nodes.size(); i++) {  // friction
+        ix1 = 2*i; iy1 = ix1 + 1; 
         l = sqrt(pow(y[ix1],2.0) + pow(y[iy1],2.0));  if (l==0) l = 1;
         //cout << " l="<< l << ","; 
         acc[2*i] += friction_term(y[ix1], l);
         acc[2*i+1] += friction_term(y[iy1], l);
-    }*/
+    }
     // y0 - vel, pos    y - [vel, pos]   ydot - [acc, vel]    never read ydot
     for (int i = 0; i < (int)nodes.size()*2; i++) ydot[i + 2*nodes.size()] = y[i];  
-    for (int i = 0; i < (int)nodes.size()*2; i++) ydot[i] = 0.01 * 4.0 * acc[i] / node_masses[div(i,2).quot];   
+    for (int i = 0; i < (int)nodes.size()*2; i++) ydot[i] = acc[i] / node_masses[div(i,2).quot];   
     
     cout << t << ",";
     //for (int i = 0; i < 4*(int)nodes.size(); i++) cout << ydot[i] << ",";
