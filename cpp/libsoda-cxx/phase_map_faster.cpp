@@ -178,11 +178,11 @@ vector<double> get_y0(vector<vector<double>> nodes)
     return y_0;
 }
 
-//const vector<vector<int>> shape = {{1}};
-const vector<vector<double>> nodes = {{-0.05,0},{0.05,0}}; //get_model_positions(shape);
-const vector<vector<int>> springs = {{0,1}};//get_model_springs(shape,nodes).first;
-const vector<int> actuators = {0};//get_model_springs(shape,nodes).second;
-const vector<double> spring_constants = {100.0};//get_spring_constants(shape, springs, nodes);
+const vector<vector<int>> shape = {{1}};
+const vector<vector<double>> nodes = get_model_positions(shape);  // {{-0.05,0},{0.05,0}}; //
+const vector<vector<int>> springs = get_model_springs(shape,nodes).first; // {{0,1}};
+const vector<int> actuators = get_model_springs(shape,nodes).second; // {0.};
+const vector<double> spring_constants = get_spring_constants(shape, springs, nodes);//{100.0};
 const vector<double> node_masses = get_masses(springs, nodes); 
 const vector<double> rest_lengths = get_rest_lengths(springs, nodes); 
 vector<double> y_init = get_y0(nodes);
@@ -192,9 +192,10 @@ vector<double> y_init = get_y0(nodes);
 double actuation_length(double time) 
 {
     (void)ac; (void)omega; (void)delta_l; 
-    if (time < 5.0) return -0.01; 
-    return 0.01; 
-    //return 0.01 * sin(time/5.0);// + sin(time)/1000.0; 
+    //if (time < 5.0) return -0.01; 
+    //return 0.01; 
+    return 0.01 * sin(time/5.0);// + sin(time)/1000.0; 
+    
     /*double t = fmod(time,t_cycle) - t_motion/4; 
     if (t < ac[3]/4)
         return ac[0] * (sin(omega * t) + 1) * delta_l;
@@ -314,7 +315,7 @@ int main(int argc, const char* argv[])
 
     //chrono::steady_clock::time_point begin = chrono::steady_clock::now();
     double phases[] = {0.0};
-    //assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
+    assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
     integrate(phases);
     //chrono::steady_clock::time_point end = chrono::steady_clock::now();
     //cout << "|| Time taken (us)= "
