@@ -1,0 +1,10 @@
+**/mannus/
+**/data/
+data/
+mannus/
+.DS_Store/
+.DS_Store
+*.zip
+.vscode/
+**/__pycache__/
+**/.ipynb_checkpoints/
