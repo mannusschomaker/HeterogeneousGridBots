@@ -191,22 +191,24 @@ vector<double> y_init = get_y0(nodes);
 // integration-related functions
 double actuation_length(double time) 
 {
-    (void)ac; (void)omega; (void)delta_l; 
+    //(void)ac; (void)omega; (void)delta_l; 
     //if (time < 5.0) return -0.01; 
     //return 0.01; 
-    return 0.01 * sin(time/5.0);// + sin(time)/1000.0; 
+    //return 0.01 * sin(time/5.0);// + sin(time)/1000.0; 
     
-    /*double t = fmod(time,t_cycle) - t_motion/4; 
-    if (t < ac[3]/4)
-        return ac[0] * (sin(omega * t) + 1) * delta_l;
-    else if ((t >= ac[3]/4) && (t < ac[3]/4 + ac[5]))
-        return ac[0] * (sin(omega * ac[3]/4) + 1) * delta_l;
-    else if ((t >= ac[3]/4 + ac[5]) && (t < 3/4 * ac[3] + ac[5]))
-        return ac[0] * (sin(omega * (t - ac[5])) + 1) * delta_l;
-    else if ((t >= 3/4 * ac[3] + ac[5]) && (t < 3/4 * ac[3] + ac[4]))  
-        return ac[0] * (sin(omega * ac[3] * 3/4) + 1) * delta_l;
+    double t = fmod(time,t_cycle) - ac[3]/4; 
+    if (t < ac[3]/4.)  // extension rise
+        return ac[0] * (sin(omega * t) + 1.) * delta_l;
+    else if ((t >= ac[3]/4.) && (t < ac[3]/4. + ac[5]))  // extension plateau 
+        return ac[0] * (sin(omega * ac[3]/4.) + 1) * delta_l;
+    else if ((t >= ac[3]/4. + ac[5]) && (t < 3./4.*ac[3] + ac[5]))  // extension fall
+        return ac[0] * (sin(omega * (t - ac[5])) + 1.) * delta_l;
+    else if ((t >= 3./4.*ac[3] + ac[5]) && (t < 3./4. * ac[3] + ac[4]))  // extension low plateau (contracted)
+        return ac[0] * (sin(omega * ac[3] * 3./4.) + 1.) * delta_l;
+    else if (t > ac[3]*3./4. + ac[4]) // extention rise back to zero
+        return ac[0] * (sin(omega * (t - ac[4])) + 1.) * delta_l;
     else 
-        return ac[0] * (sin(omega * (t - ac[4])) + 1) * delta_l;*/
+        exit(1);  
 }
 
 double friction_term(double x, double l) 
@@ -223,6 +225,9 @@ void yprime(double t, double* y, double* ydot, void* phi)
     for (int i = 0; i < (int)actuators.size(); i++) {  // actuate (new l0 = rest len + time-dependent)
         l0[actuators[i]] += actuation_length(t - ((double*)phi)[div(i,2).quot]);
     }
+    for (int i = 0; i < (int)l0.size(); i++) 
+        cout << l0[i] << ",";
+    cout << endl;
     int ix1, iy1, ix2, iy2;  // flattened-out indices of the components of start/end node of a spring
     double l, ax, ay;
     for (int i = 0; i < (int)springs.size(); i++) {  // Hooke's law
@@ -263,6 +268,8 @@ void yprime(double t, double* y, double* ydot, void* phi)
 int integrate(double phases[])
 {
     double t = 0; vector<double> res; int istate = 1; LSODA lsoda;
+    //for (int i=0; i < 6; i++) cout << " | " << ac[i];
+    //exit(0);
     //cout << endl << "init: "; for (double d : y_init) cout << d << " ";  
     //cout << endl;
     lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, 10.0, &istate, phases);
