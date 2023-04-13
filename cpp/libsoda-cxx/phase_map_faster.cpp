@@ -267,13 +267,20 @@ void yprime(double t, double* y, double* ydot, void* phi)
 
 int integrate(double phases[])
 {
-    double t = 0; vector<double> res; int istate = 1; LSODA lsoda;
+    double t = 0; vector<double> res, init; int istate = 1; LSODA lsoda;
     //for (int i=0; i < 6; i++) cout << " | " << ac[i];
     //exit(0);
     //cout << endl << "init: "; for (double d : y_init) cout << d << " ";  
     //cout << endl;
-    lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, 10.0, &istate, phases, 1e-5, 1e-5);
+    init = y_init; 
+    for (double i = 1.; i < 20.; i += 1.) {
+        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * t_cycle/2., &istate, phases, 1e-5, 1e-5);
+        init = vector<double>(res); res = vector<double>();
+    }
+    //lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, i * t_cycle/2., &istate, phases, 1e-5, 1e-5);
     
+    
+
     /*for (int iteration = 1; iteration < 20; iteration++) {
         lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, (double)iteration * dt, &istate, phases);
         if (istate <= 0) {
