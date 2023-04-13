@@ -178,7 +178,7 @@ vector<double> get_y0(vector<vector<double>> nodes)
     return y_0;
 }
 
-const vector<vector<int>> shape = {{1}};//,0},{1,1}};
+const vector<vector<int>> shape = {{1,0},{1,1}};
 const vector<vector<double>> nodes = get_model_positions(shape);  // {{-0.05,0},{0.05,0}}; //
 const vector<vector<int>> springs = get_model_springs(shape,nodes).first; // {{0,1}};
 const vector<int> actuators = get_model_springs(shape,nodes).second; // {0.};
@@ -273,11 +273,11 @@ int integrate(double phases[])
     //cout << endl << "init: "; for (double d : y_init) cout << d << " ";  
     //cout << endl;
     init = y_init; 
-    /*for (double i = 1.; i < 10.; i += 1.) {
+    for (double i = 1.; i < 10.; i += 1.) {
         lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * t_cycle / 2., &istate, phases, 1e-5, 1e-5);
         init = vector<double>(res); res = vector<double>();
-    }*/
-    lsoda.lsoda_update(yprime, init.size(), init, res, &t, 1.0, &istate, phases, 1e-5, 1e-5);
+    }
+    //lsoda.lsoda_update(yprime, init.size(), init, res, &t, 1.0, &istate, phases, 1e-5, 1e-5);
     
     
 
@@ -328,7 +328,7 @@ int main(int argc, const char* argv[])
     for (double m : node_masses) cout << m << " ";*/
 
     //chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-    double phases[] = {0.0};//,0.3,0.6};
+    double phases[] = {0.0,0.3,0.6};
     assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
     integrate(phases);
     //chrono::steady_clock::time_point end = chrono::steady_clock::now();
