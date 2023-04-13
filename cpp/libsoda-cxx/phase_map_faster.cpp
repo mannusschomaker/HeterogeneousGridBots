@@ -273,8 +273,8 @@ int integrate(double phases[])
     //cout << endl << "init: "; for (double d : y_init) cout << d << " ";  
     //cout << endl;
     init = y_init; 
-    for (double i = 1.; i < 20.; i += 1.) {
-        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * t_cycle/2., &istate, phases, 1e-5, 1e-5);
+    for (double i = 1.; i < 10.; i += 1.) {
+        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * t_cycle, &istate, phases, 1e-5, 1e-5);
         init = vector<double>(res); res = vector<double>();
     }
     //lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, i * t_cycle/2., &istate, phases, 1e-5, 1e-5);
