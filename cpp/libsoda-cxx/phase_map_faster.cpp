@@ -43,6 +43,8 @@ const double Vst = Vbrk * sqrt(2);
 const double B = 2;
 const double V_constants[] = {Vbrk, Vcoul, Vst, B};
 
+const double epsilon = 1e-8; // accurarcy required for the angle calculations
+
 // precompute the model structure (many redundancies, but doesn't matter because only generated once)
 vector<vector<double>> get_model_positions(vector<vector<int>> mat) 
 {
@@ -186,6 +188,40 @@ const vector<double> spring_constants = get_spring_constants(shape, springs, nod
 const vector<double> node_masses = get_masses(springs, nodes); 
 const vector<double> rest_lengths = get_rest_lengths(springs, nodes); 
 vector<double> y_init = get_y0(nodes);
+const double ncnt = nodes.size();
+
+
+// helpers
+double angVec(double x1, double y1, double x2, double y2) { 
+    double theta = acos((x1*x2 + y1*y2)/(sqrt(x1*x1 + y1*y1) * sqrt(x2*x2 + y2*y2))); 
+    double a = x1*cos(theta) - y1*sin(theta), b = x1*sin(theta) + y1*cos(theta);
+    if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return theta; 
+    a = x1*cos(-theta) - y1*sin(-theta); b = x1*sin(-theta) + y1*cos(-theta);
+    if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return -theta; 
+    exit(1); // impossible because b is either a rot theta or a rot -theta
+}
+
+double angLst(vector<double> a, vector<double> b) {
+    double avgAngDelta = 0, ang = 0; int cnt = 0, cnt2 = 0; 
+    for (int j = 0; j < ncnt; j++) {
+        ang = angVec(a[2*j], a[2*j + 1], b[2*j], b[2*j + 1]);
+        if (ang < 0) cnt++;
+        if (ang > 0) cnt2++; 
+    }
+    if ((cnt == ncnt) && (cnt2 > 0)) exit(1);  // TODO: this should rather be a warning than error
+    if ((cnt2 == ncnt) && (cnt > 0)) exit(1);
+    if ((cnt < ncnt) && (cnt2 < ncnt)) exit(1);
+    return avgAngDelta / (double)(ncnt);
+}
+
+array<double,2> com(vector<double> pos) {
+    array<double,2> c{0,0};
+    for (int j = 0; j < ncnt; j++) {
+        c[0] += pos[2*j]; c[1] += pos[2*j + 1];
+    } 
+    c[0] /= (double)ncnt; c[1] /= (double)ncnt;
+    return c;
+}
 
 
 // integration-related functions
@@ -225,9 +261,9 @@ void yprime(double t, double* y, double* ydot, void* phi)
     for (int i = 0; i < (int)actuators.size(); i++) {  // actuate (new l0 = rest len + time-dependent)
         l0[actuators[i]] += actuation_length(t - ((double*)phi)[div(i,2).quot]);
     }
-    for (int i = 0; i < (int)l0.size(); i++) 
-        cout << l0[i] << ",";
-    cout << endl;
+    //for (int i = 0; i < (int)l0.size(); i++) 
+    //    cout << l0[i] << ",";
+    //cout << endl;
     int ix1, iy1, ix2, iy2;  // flattened-out indices of the components of start/end node of a spring
     double l, ax, ay;
     for (int i = 0; i < (int)springs.size(); i++) {  // Hooke's law
@@ -256,45 +292,29 @@ void yprime(double t, double* y, double* ydot, void* phi)
     for (int i = 0; i < (int)nodes.size()*2; i++) ydot[i + 2*nodes.size()] = y[i];  
     for (int i = 0; i < (int)nodes.size()*2; i++) ydot[i] = acc[i] / node_masses[div(i,2).quot];   
     
-    cout << t << ",";
+    //cout << t << ",";
     //for (int i = 0; i < 4*(int)nodes.size(); i++) cout << ydot[i] << ",";
     //for (int i = 2*(int)nodes.size(); i < 4*(int)nodes.size(); i++) cout << y[i] << ",";
     //cout << endl << endl;
-    for (int i = 0; i < 4*(int)nodes.size();i++) cout << y[i] << ","; 
+    //for (int i = 0; i < 4*(int)nodes.size();i++) cout << y[i] << ","; 
     //for (double x : l0) cout << x << ",";
-    cout << endl;
+    //cout << endl;
 }
 
 int integrate(double phases[])
 {
-    double t = 0; vector<double> res, init; int istate = 1; LSODA lsoda;
-    //for (int i=0; i < 6; i++) cout << " | " << ac[i];
-    //exit(0);
-    //cout << endl << "init: "; for (double d : y_init) cout << d << " ";  
-    //cout << endl;
-    init = y_init; 
-    for (double i = 1.; i < 10.; i += 1.) {
-        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * t_cycle / 2., &istate, phases, 1e-5, 1e-5);
-        init = vector<double>(res); res = vector<double>();
+    double t = 0, t_max = 20.; vector<double> res, init = y_init; int istate = 1; LSODA lsoda;
+    double df[(int)t_max/2 + 1][3]; array<double,2> c = com(init);  // df tracks CoM & angle 
+    df[0][0] = c[0]; df[0][1] = c[1]; df[0][2] = 0; // initial com, 0 angle
+    for (double i = 1.; i <= t_max; i += 1.) {
+        lsoda.lsoda_update(yprime, ncnt, init, res, &t, i * 1., &istate, phases, 1e-5, 1e-5);
+        if ((int)i % 2 == 0) {  // add new measurement to df, always at same time in cycle else drift
+            int idx = (int)i/2 + 1; c = com(res); df[idx][0] = c[0]; df[idx][1] = c[1]; 
+            df[idx][2] = df[idx-1][2] + angLst(init,res); // because the other metrics are cumulative 
+            cout << t <<"," << df[idx][0] << "," << df[idx][1] << "," << df[idx][2] << endl;
+        } 
+        init = vector<double>(res); res = vector<double>();   
     }
-    //lsoda.lsoda_update(yprime, init.size(), init, res, &t, 1.0, &istate, phases, 1e-5, 1e-5);
-    
-    
-
-    /*for (int iteration = 1; iteration < 20; iteration++) {
-        lsoda.lsoda_update(yprime, y_init.size(), y_init, res, &t, (double)iteration * dt, &istate, phases);
-        if (istate <= 0) {
-            cerr << "error istate = " << istate << endl; exit(0);
-        }
-        cout << "t=" << t << endl;
-        cout << "res: ";
-        for (int i = 1; i < (int)res.size(); i++) cout << res[i] << " ";
-        cout << endl;
-    }*/
-    //cout << endl << "tend=" << t << endl;
-    //cout << "res: ";
-    //for (int i = 1; i < (int)res.size(); i++) cout << res[i] << " ";
-    //cout << endl;
     return 0;
 }
 
