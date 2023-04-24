@@ -198,11 +198,15 @@ double angVec(double x1, double y1, double x2, double y2) {
     if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return theta; 
     a = x1*cos(-theta) - y1*sin(-theta); b = x1*sin(-theta) + y1*cos(-theta);
     if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return -theta; 
+    cout << "err: " << x1 << "," << y1 << " ang " << x2 << "," << y2 << " theta=" << theta << " a: " << a << " b: " << b << endl;
     exit(1); // impossible because b is either a rot theta or a rot -theta
 }
 
 double angLst(vector<double> a, vector<double> b) {
-    double avgAngDelta = 0, ang = 0; int cnt = 0, cnt2 = 0; 
+    double avgAngDelta = 0, ang = 0; int cnt = 0, cnt2 = 0;
+    cout << "a: "; 
+    for (int i = 0; i < ncnt; i++) cout << a[i] << ",";
+    cout << endl;
     for (int j = 0; j < ncnt; j++) {
         ang = angVec(a[2*j], a[2*j + 1], b[2*j], b[2*j + 1]);
         if (ang < 0) cnt++;
@@ -309,6 +313,11 @@ int integrate(double phases[])
     for (double i = 1.; i <= t_max; i += 1.) {
         lsoda.lsoda_update(yprime, ncnt, init, res, &t, i * 1., &istate, phases, 1e-5, 1e-5);
         if ((int)i % 2 == 0) {  // add new measurement to df, always at same time in cycle else drift
+            cout << "i: "; for (int x = 0; x < ncnt; x++) cout << init[x] <<",";
+            cout << endl;
+            cout << "r: "; for (int x = 0; x < ncnt; x++) cout << res[x] <<",";
+            cout << endl;
+        
             int idx = (int)i/2 + 1; c = com(res); df[idx][0] = c[0]; df[idx][1] = c[1]; 
             df[idx][2] = df[idx-1][2] + angLst(init,res); // because the other metrics are cumulative 
             cout << t <<"," << df[idx][0] << "," << df[idx][1] << "," << df[idx][2] << endl;
