@@ -189,6 +189,7 @@ const vector<double> node_masses = get_masses(springs, nodes);
 const vector<double> rest_lengths = get_rest_lengths(springs, nodes); 
 vector<double> y_init = get_y0(nodes);
 const int ncnt = y_init.size();
+const int blockcount = 3; 
 
 
 array<double,2> com(vector<double> pos) 
@@ -314,25 +315,29 @@ void yprime(double t, double* y, double* ydot, void* phi)
     //cout << endl;
 }
 
-int integrate(double phases[])
+vector<double> integrate(double phases[])
 {
     double t = 0; vector<double> res, init; int istate = 1; LSODA lsoda;
-    init = y_init;
-    cout << "INIT: "; 
-    for (int i = 0; i<(int)y_init.size(); i++) cout << y_init[i] << ",";
-    cout << endl;
-    for (double i = 1.; i <= 20.; i += 1.) {
-        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * 1., &istate, phases, 1e-5, 1e-5);
+    init = y_init; array<double,2> comSum {0,0}; double angSum = 0; double t_max = 20., step_size = 1.;
+    //cout << "INIT: "; 
+    //for (int i = 0; i<(int)y_init.size(); i++) cout << y_init[i] << ",";
+    //cout << endl;
+    for (double i = 1.; i <= t_max; i += step_size) {
+        lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * step_size, &istate, phases, 1e-5, 1e-5);
         if ((int)i % 2 == 0) {
             vector<double> previousPos = vector<double>(init.begin() + ncnt/2 + 1, init.end());
             vector<double> currentPos = vector<double>(res.begin() + ncnt/2 + 1, res.end());
-            array<double,2> c1 = com(currentPos);
-            double angleDiff = angLst(previousPos,currentPos);
-            cout << "t: " << t << " centre: " << c1[0] << ", " << c1[1] << "  angle: " << angleDiff << endl;
+            array<double,2> c1 = com(previousPos), c2 = com(currentPos);
+            angSum += angLst(previousPos,currentPos); 
+            comSum[0] += c2[0] - c1[0]; comSum[1] += c2[1] - c1[1];
+            // TODO calculation of sum (and thus average) can be simplified
+            //cout << "t: " << t << " cDiff: " << cdiff[0] << ", " << cdiff[1] << "  angDiff: " << angleDiff*360./M_PI << endl;
         }
         init = vector<double>(res); res = vector<double>();
     }
-    return 0;
+    vector<double> stats; for (int i = 0; i < blockcount; i++) stats.push_back(phases[i]);
+    stats.push_back(comSum[0] / (t_max/step_size)); stats.push_back(comSum[1] / (t_max/step_size)); stats.push_back(angSum / (t_max/step_size));
+    return stats;
 }
 
 template <typename RAIter>
@@ -346,6 +351,24 @@ int parallel_sum(RAIter beg, RAIter end)
     auto handle = std::async(std::launch::async, parallel_sum<RAIter>, mid, end);
     int sum = parallel_sum(beg, mid);
     return sum + handle.get();
+}
+
+void simple_map() 
+{
+    double delta = 2./40.;
+    vector<vector<double>> res;
+    for (double x = 0.; x <= 2.; x += delta) {
+        for (double y = 0.; y <= 2.; y += delta) {
+            double phases[] = {x,y,0};
+            res.push_back(integrate(phases));
+        }
+    }
+    for (vector<double> el : res) {
+        for (double d : el) {
+            cout << d << ",";
+        }
+        cout << endl; 
+    }
 }
 
 int main(int argc, const char* argv[])
@@ -364,13 +387,14 @@ int main(int argc, const char* argv[])
     cout << endl << "masses: ";
     for (double m : node_masses) cout << m << " ";*/
 
-    //chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-    double phases[] = {0.0,0.3,0.6};
-    assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
-    integrate(phases);
-    //chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    //cout << "|| Time taken (us)= "
-    //     << chrono::duration_cast<chrono::microseconds>(end - begin).count() << endl;
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    //double phases[] = {0.0,0.3,0.6};
+    //assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
+    //assert((sizeof(phases)/sizeof(*phases) == blockcount));
+    //integrate(phases);
+    simple_map();
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    cout << "|| Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
 
     //cout << endl << "y0: ";
     //for (double x : y_init) cout << x << " ";
