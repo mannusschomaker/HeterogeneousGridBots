@@ -198,7 +198,7 @@ array<double,2> com(vector<double> pos)
     for (int j = 0; j < (int)pos.size()/2; j ++) {
         c[0] += pos[2*j]; c[1] += pos[2*j+1];
     } 
-    c[0] /= (double)pos.size(); c[1] /= (double)pos.size();
+    c[0] /= ((double)pos.size()/2.); c[1] /= ((double)pos.size()/2.);
     return c;
 }
 
@@ -234,10 +234,10 @@ double angLst(vector<double> a, vector<double> b)
     double avg = 0; 
     //cout << endl << "ncnt: " << ncnt << " size " << a.size() << " " << b.size() << endl;
     array<double,2> com1 = com(a), com2 = com(b);
-    for (int j = 0; j < (int)a.size(); j++) {
+    for (int j = 0; j < (int)a.size()/2; j++) {
         avg += angVec(a[2*j] - com1[0], a[2*j+1] - com1[1], b[2*j] - com2[0], b[2*j+1] - com2[1]); 
     }
-    return avg / (double)a.size();
+    return avg / ((double)a.size()/2.);
 }
 
 
@@ -318,7 +318,7 @@ void yprime(double t, double* y, double* ydot, void* phi)
 vector<double> integrate(double phases[])
 {
     double t = 0; vector<double> res, init; int istate = 1; LSODA lsoda;
-    init = y_init; array<double,2> comSum {0,0}; double angSum = 0; double t_max = 20., step_size = 1.;
+    init = y_init; array<double,2> comSum {0,0}; double angSum = 0; double t_max = 100., step_size = 1.;
     //cout << "INIT: "; 
     //for (int i = 0; i<(int)y_init.size(); i++) cout << y_init[i] << ",";
     //cout << endl;
@@ -331,7 +331,10 @@ vector<double> integrate(double phases[])
             angSum += angLst(previousPos,currentPos); 
             comSum[0] += c2[0] - c1[0]; comSum[1] += c2[1] - c1[1];
             // TODO calculation of sum (and thus average) can be simplified
-            //cout << "t: " << t << " cDiff: " << cdiff[0] << ", " << cdiff[1] << "  angDiff: " << angleDiff*360./M_PI << endl;
+            cout << t << ",";
+            for (int i = 0; i < (int)previousPos.size(); i++) cout << previousPos[i] << ",";
+            cout << endl;
+            cout << comSum[0] << "," << comSum[1] << "," << angSum << endl;
         }
         init = vector<double>(res); res = vector<double>();
     }
@@ -387,14 +390,14 @@ int main(int argc, const char* argv[])
     cout << endl << "masses: ";
     for (double m : node_masses) cout << m << " ";*/
 
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-    //double phases[] = {0.0,0.3,0.6};
+    //chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    double phases[] = {0.,0.,1.};
     //assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
     //assert((sizeof(phases)/sizeof(*phases) == blockcount));
-    //integrate(phases);
-    simple_map();
-    chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    cout << "|| Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
+    integrate(phases);
+    //simple_map();
+    //chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    //cout << "|| Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
 
     //cout << endl << "y0: ";
     //for (double x : y_init) cout << x << " ";
