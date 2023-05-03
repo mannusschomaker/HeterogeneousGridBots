@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <vector>
 #include <cassert>
@@ -195,7 +196,7 @@ const int blockcount = 3;
 array<double,2> com(vector<double> pos) 
 {
     array<double,2> c{0,0};
-    for (int j = 0; j < (int)pos.size()/2; j ++) {
+    for (int j = 0; j < (int)pos.size()/2; j++) {
         c[0] += pos[2*j]; c[1] += pos[2*j+1];
     } 
     c[0] /= ((double)pos.size()/2.); c[1] /= ((double)pos.size()/2.);
@@ -215,7 +216,7 @@ double angVec(double x1in, double y1in, double x2in, double y2in)
     //cout << "xi: " << x1 << "," << y1 << " ang " << x2 << "," << y2 << endl;
     //cout << "prod=" << prod << " l1=" << l1 << " l2=" << l2 << endl;
     if (abs(prod - 1.) < epsilon) return 0;
-    if (abs(prod - -1.) < epsilon) return M_PI/2.;
+    if (abs(prod - -1.) < epsilon) return M_PI;
     double theta = acos(prod);
     // check if v1 rot theta = v2
     double a = x1*cos(theta) - y1*sin(theta), b = x1*sin(theta) + y1*cos(theta);
@@ -231,9 +232,7 @@ double angVec(double x1in, double y1in, double x2in, double y2in)
 double angLst(vector<double> a, vector<double> b) 
 {
     // assumes a and b have the same size
-    double avg = 0; 
-    //cout << endl << "ncnt: " << ncnt << " size " << a.size() << " " << b.size() << endl;
-    array<double,2> com1 = com(a), com2 = com(b);
+    double avg = 0; array<double,2> com1 = com(a), com2 = com(b);
     for (int j = 0; j < (int)a.size()/2; j++) {
         avg += angVec(a[2*j] - com1[0], a[2*j+1] - com1[1], b[2*j] - com2[0], b[2*j+1] - com2[1]); 
     }
@@ -317,29 +316,28 @@ void yprime(double t, double* y, double* ydot, void* phi)
 
 vector<double> integrate(double phases[])
 {
-    double t = 0; vector<double> res, init; int istate = 1; LSODA lsoda;
-    init = y_init; array<double,2> comSum {0,0}; double angSum = 0; double t_max = 100., step_size = 1.;
-    //cout << "INIT: "; 
-    //for (int i = 0; i<(int)y_init.size(); i++) cout << y_init[i] << ",";
-    //cout << endl;
+    double t = 0; vector<double> res, init, previousPos; int istate = 1; LSODA lsoda;
+    init = y_init; previousPos = vector<double>(init.begin() + ncnt/2, init.end());
+    double t_max = 100., step_size = 1.; vector<double> comx, comy, ang;
     for (double i = 1.; i <= t_max; i += step_size) {
         lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * step_size, &istate, phases, 1e-5, 1e-5);
         if ((int)i % 2 == 0) {
-            vector<double> previousPos = vector<double>(init.begin() + ncnt/2 + 1, init.end());
             vector<double> currentPos = vector<double>(res.begin() + ncnt/2 + 1, res.end());
-            array<double,2> c1 = com(previousPos), c2 = com(currentPos);
-            angSum += angLst(previousPos,currentPos); 
-            comSum[0] += c2[0] - c1[0]; comSum[1] += c2[1] - c1[1];
-            // TODO calculation of sum (and thus average) can be simplified
-            cout << t << ",";
+            array<double,2> c1 = com(previousPos), c2 = com(currentPos); // can be optimised (redundant)
+            comx.push_back(c2[0] - c1[0]); comy.push_back(c2[1] - c1[1]); ang.push_back(angLst(previousPos,currentPos));
+            cout << t << ","; 
             for (int i = 0; i < (int)previousPos.size(); i++) cout << previousPos[i] << ",";
-            cout << endl;
-            cout << comSum[0] << "," << comSum[1] << "," << angSum << endl;
+            cout << endl; 
+            cout << c2[0] << "," << c2[1] << "," << angLst(previousPos,currentPos) << endl;
+            previousPos = vector<double>(currentPos.begin(), currentPos.end());
         }
         init = vector<double>(res); res = vector<double>();
     }
-    vector<double> stats; for (int i = 0; i < blockcount; i++) stats.push_back(phases[i]);
-    stats.push_back(comSum[0] / (t_max/step_size)); stats.push_back(comSum[1] / (t_max/step_size)); stats.push_back(angSum / (t_max/step_size));
+    vector<double> stats; 
+    for (int i = 0; i < blockcount; i++) stats.push_back(phases[i]);
+    stats.push_back(accumulate(comx.begin()+1,comx.end(),0.)/(double)(comx.size()-1));
+    stats.push_back(accumulate(comy.begin()+1,comy.end(),0.)/(double)(comy.size()-1));
+    stats.push_back(accumulate(ang.begin()+1,ang.end(),0.)/(double)(ang.size()-1));
     return stats;
 }
 
@@ -358,20 +356,26 @@ int parallel_sum(RAIter beg, RAIter end)
 
 void simple_map() 
 {
-    double delta = 2./40.;
+    double delta = 2./20.;
     vector<vector<double>> res;
     for (double x = 0.; x <= 2.; x += delta) {
         for (double y = 0.; y <= 2.; y += delta) {
             double phases[] = {x,y,0};
             res.push_back(integrate(phases));
         }
+        cout << "x=" << x << endl;
     }
+    cout << "write to file ... " << endl;
+    ofstream myfile;
+    myfile.open ("test2.txt",ofstream::trunc);
     for (vector<double> el : res) {
         for (double d : el) {
-            cout << d << ",";
+            myfile << d << ",";
         }
-        cout << endl; 
+        myfile << endl; 
     }
+    myfile.close();
+    cout << "end" << endl; 
 }
 
 int main(int argc, const char* argv[])
@@ -390,15 +394,18 @@ int main(int argc, const char* argv[])
     cout << endl << "masses: ";
     for (double m : node_masses) cout << m << " ";*/
 
-    //chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-    double phases[] = {0.,0.,1.};
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    //vector<double> alg {-1,-1,1,1,-1,1,1,-1,0,1};
+    //vector<double> blg {-1,0,3,0,1,2,1,-2,3,2};
+    double phases[] = {0.,1.,0.4};
     //assert((sizeof(phases)/sizeof(*phases) == actuators.size() / 2));
     //assert((sizeof(phases)/sizeof(*phases) == blockcount));
     integrate(phases);
     //simple_map();
-    //chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    //cout << "|| Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
-
+    chrono::steady_clock::time_point end = chrono::steady_clock::now();
+    //cout << "Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
+(void)end;
+(void)begin;
     //cout << endl << "y0: ";
     //for (double x : y_init) cout << x << " ";
     //cout << endl; 
