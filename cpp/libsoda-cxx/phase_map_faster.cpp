@@ -193,6 +193,10 @@ const int ncnt = y_init.size();
 const int blockcount = 3; 
 
 
+array<double,2> rotate(double x, double y, double theta) {
+    return array<double,2> {x*cos(theta) - y*sin(theta), x*sin(theta) + y*cos(theta)};
+}
+
 array<double,2> com(vector<double> pos) 
 {
     array<double,2> c{0,0};
@@ -213,19 +217,15 @@ double angVec(double x1in, double y1in, double x2in, double y2in)
     double l1 = sqrt(pow(x1in,2.)+pow(y1in,2.)), l2 = sqrt(pow(x2in,2.)+pow(y2in,2.));
     double x1 = x1in/l1, y1 = y1in/l1, x2 = x2in/l2, y2 = y2in/l2;
     double prod = x1*x2 + y1*y2;  
-    //cout << "xi: " << x1 << "," << y1 << " ang " << x2 << "," << y2 << endl;
-    //cout << "prod=" << prod << " l1=" << l1 << " l2=" << l2 << endl;
     if (abs(prod - 1.) < epsilon) return 0;
     if (abs(prod - -1.) < epsilon) return M_PI;
-    double theta = acos(prod);
-    // check if v1 rot theta = v2
-    double a = x1*cos(theta) - y1*sin(theta), b = x1*sin(theta) + y1*cos(theta);
-    if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return theta; 
-    // check if v1 rot -theta = v2 i.e. v2 rot theta = v1
-    a = x1*cos(-theta) - y1*sin(-theta); b = x1*sin(-theta) + y1*cos(-theta);
-    if ((abs(a-x2) < epsilon) && (abs(b-y2) < epsilon)) return -theta;
+    double theta = acos(prod); 
+    array<double,2> rot = rotate(x1,y1,theta);
+    if ((abs(rot[0]-x2) < epsilon) && (abs(rot[1]-y2) < epsilon)) return theta; 
+    rot = rotate(x1,y1,-theta);
+    if ((abs(rot[0]-x2) < epsilon) && (abs(rot[1]-y2) < epsilon)) return -theta; 
     // check if error (e.g. precision too low), mathematically impossible  
-    cout << "ang err: " << x1 << "," << y1 << " ang " << x2 << "," << y2 << " theta=" << theta << " a: " << a << " b: " << b << endl;
+    cout << "ang err: " << x1 << "," << y1 << " ang " << x2 << "," << y2 << " theta=" << theta << endl;
     exit(1); 
 }
 
@@ -318,18 +318,20 @@ vector<double> integrate(double phases[])
 {
     double t = 0; vector<double> res, init, previousPos; int istate = 1; LSODA lsoda;
     init = y_init; previousPos = vector<double>(init.begin() + ncnt/2, init.end());
-    double t_max = 10., step_size = 1.; vector<double> comx, comy, ang;
+    double t_max = 10., step_size = 1.; vector<double> comx, comy, ang; double angSum = 0;
     for (double i = 1.; i <= t_max; i += step_size) {
         lsoda.lsoda_update(yprime, y_init.size(), init, res, &t, i * step_size, &istate, phases, 1e-5, 1e-5);
         if ((int)i % 2 == 0) {
-            vector<double> currentPos = vector<double>(res.begin() + ncnt/2 + 1, res.end());
+            vector<double> currentPos = vector<double>(res.begin() + ncnt/2 + 1, res.end()); 
+            double angDiff = angLst(previousPos,currentPos);
+            ang.push_back(angDiff); angSum += angDiff; 
             array<double,2> c1 = com(previousPos), c2 = com(currentPos); // can be optimised (redundant)
-            comx.push_back(c2[0] - c1[0]); comy.push_back(c2[1] - c1[1]); ang.push_back(angLst(previousPos,currentPos));
+            array<double,2> corrected = rotate(c2[0] - c1[0], c2[1] - c1[1], -angSum); 
+            comx.push_back(corrected[0]); comy.push_back(corrected[1]);
             /*cout << t << ","; 
             for (int i = 0; i < (int)previousPos.size(); i++) cout << previousPos[i] << ",";
             cout << endl; 
             cout << c2[0] << "," << c2[1] << "," << angLst(previousPos,currentPos) << endl;*/
-            // TODO: rotate CoM diff back rel to turn 
             previousPos = vector<double>(currentPos.begin(), currentPos.end());
         }
         init = vector<double>(res); res = vector<double>();
@@ -361,14 +363,14 @@ void simple_map()
     vector<vector<double>> res;
     for (double x = 0.; x <= 2.; x += delta) {
         for (double y = 0.; y <= 2.; y += delta) {
-            double phases[] = {x,y,0};
+            double phases[] = {0,x,y};
             res.push_back(integrate(phases));
         }
         cout << "x=" << x << endl;
     }
     cout << "write to file ... " << endl;
     ofstream myfile;
-    myfile.open ("test2.txt",ofstream::trunc);
+    myfile.open ("test4.txt",ofstream::trunc);
     for (vector<double> el : res) {
         for (double d : el) {
             myfile << d << ",";
