@@ -1,0 +1,11 @@
+﻿  Source.cpp
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(194,31): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(194,31): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(196,31): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(196,31): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(197,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(197,33): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\New c project\Source.cpp(276,30): warning C4244: 'argument': conversion from 'double' to 'const unsigned __int64', possible loss of data
+LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/OPT:ICF' specification
+Source.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/OPT:ICF' specification
+  New c project.vcxproj -> G:\PROJECTS\Heterogeneous GridBot Configuration (Yorick)\C_simulation\x64\Debug\New c project.exe
