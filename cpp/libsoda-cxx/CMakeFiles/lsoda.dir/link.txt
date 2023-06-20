@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc liblsoda.a CMakeFiles/lsoda.dir/LSODA.cpp.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib liblsoda.a
