@@ -42,7 +42,7 @@ const double F_constants[] = {Fbrk, Fcoulomb, Fstatic};
 const double Vbrk = 0.01;
 const double Vcoul = Vbrk/10;
 const double Vst = Vbrk * sqrt(2);
-const double B = 2;
+const double B = 2;  // should this be 4? 
 const double V_constants[] = {Vbrk, Vcoul, Vst, B};
 
 const double epsilon = 5e-7;
