@@ -322,17 +322,21 @@ vector<double> integrate(double phases[])
     return stats;
 }
 
-void simple_phasemap(double delta, string filename)
+/**
+ * create a 2d phasemap by iterating the phases at idx1 and idx2 of the phases[] array with step size delta and leaving the others
+ * constant (just insert 0 or any value at idx1 and idx2 of phase array) and writes it to 'filename'
+ */
+void simple_phasemap(double delta, int idx1, int idx2, double phases[], string filename)
 {
     vector<vector<double>> res;
     for (double x = 0.; x <= 2.; x += delta) {
         for (double y = 0.; y <= 2.; y += delta) {
-            double phases[] = {x,0,y};
+            phases[idx1] = x; phases[idx2] = y;
             res.push_back(integrate(phases));
         }
         cout << "x=" << x << endl;
     }
-    cout << "write to file ... " << endl;
+    cout << "write phasemap to file: " << filename << endl;
     ofstream myfile;
     myfile.open(filename, ofstream::trunc);
     for (vector<double> el : res) {
@@ -342,47 +346,15 @@ void simple_phasemap(double delta, string filename)
         myfile << endl;
     }
     myfile.close();
-    cout << "wrote datafile" << endl;
+    cout << "wrote phasemap file with " << res.size() << " entries." << endl;
 }
-
-void general_phasemap(array<int,2> X, int a, double dx, string filename)
-{  // TODO: isolate inner function
-    // TODO: generalise 2d -> nd, also tcycle = 2 constant here
-    /* whole map: [0,tcycle]^n, one call computes hypercube from point X \in R^n with side length a,
-       dx is such that (tcycle/dx)^n, i.e. usually (2/dx)^n, points sampled in total (dx = resolution step),
-       function writes to disk immediately to avoid taking up too much RAM */
-    vector<vector<double>> res;
-    for (int x = 0; x < a; x++) {
-        for (int y = 0; y < a; y++) {
-            double phases[] = {0, X[0] + x*dx, X[1] + y*dx};
-            res.push_back(integrate(phases));
-        }
-    }
-    ofstream myfile;
-    myfile.open(filename, ios_base::app);
-    for (vector<double> el : res) {
-        for (double d : el) {
-            myfile << d << ",";
-        }
-        myfile << endl;
-    }
-    myfile.close();
-    cout << X[0]*dx << "," << X[1]*dx << " -> " << (X[0]+a)*dx << "," << (X[1]+a)*dx << endl;
-}
-
-void parallel_general_phasemap(int w, string filename)
-{
-    int a = sqrt(200); // chunk small enough to run (empirically, running 200 takes ca. 7 seconds)
-    for (int i = 0; i < w * a; i++)
-}
-
 
 int main(int argc, const char* argv[])
 {
     chrono::steady_clock::time_point begin = chrono::steady_clock::now();
-    //simple_phasemap(2./10.,"./tst.txt");
-
+    double phi[] = {0.0,0.0,0.0};
+    simple_phasemap(2./40.,1,2,phi,"11_10_phasemap.txt");  // file standardly written to 'outfiles' directory because executable is stored there
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    cout << "Time taken s= " << chrono::duration_cast<chrono::seconds>(end - begin).count() << endl;
+    cout << "Time taken " << chrono::duration_cast<chrono::seconds>(end - begin).count() << " seconds" << endl;
     return 0;
 }
